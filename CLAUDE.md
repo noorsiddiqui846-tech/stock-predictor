@@ -71,6 +71,15 @@ Later levels (not in V1): trends, news, next-week fan chart reading, spreading r
 - Starting price is limited to $1 to $1,000.
 - Charts are drawn by hand (canvas/SVG), with no chart library.
 - Git is set up locally. The user publishes to GitHub themselves from VS Code.
+- Industry also has a "Something else (type your own)" option (2-25 characters, no crypto). Custom industries use general made-up news headlines.
+- Forecast method: 1,000 imagined futures, each built by replaying randomly picked moves from the last 30 days. Next-day forecast = day 1 of the same futures as the next-week fan. "Likely range" = middle 8 in 10 futures. Seeded, so it doesn't change on reload. Never show 0% or 100% (use "<1%" / ">99%"). On the chart, next week gets about a quarter of the width so the fan is readable on phones.
+- The app's own forecasts must be calibrated, because the game teaches calibration. Ranges are widened by FORECAST_SPREAD = 1.1 (in forecast.js: each past move is stretched 10% away from the average move), chosen by testing so "8 in 10" ranges catch about 8 in 10 real outcomes and "5 in 10" about 5 in 10. Re-run the honesty check (thousands of test companies, then compare the forecast with one more real made-up week) after any change to the price generator or forecast. Overconfidence is taught later using the learner's own guesses, not the app's.
+- Only Growing and Struggling have a built-in trend (drift). Calm, Wild and Random have zero drift. Good and bad news are equally likely except for Growing (more good) and Struggling (more bad).
+- Next day: the learner's chance (1-99%, no 0/100), optional range and optional reason are locked in together with the app's forecast before the day is made. Each new day uses its own seed (company seed + day number), so reloading can't re-roll it. The main chart, table and forecast always use the latest 30 days.
+- Mood thresholds depend on personality: big move = 1.5x the personality's normal daily wiggle (vol), stable = under 0.3x. E.g. Calm: big ≥1.2%, Wild: big ≥5.25%.
+- Forecast scoring uses a "miss score" = (outcome − chance)² × 100 (the Brier score). Lower is better, coin flip always 25. It's a proper scoring rule, so overconfidence can't win by luck. "Up" means close > previous close; flat counts as not up.
+- Changing the company asks for confirmation if there are forecasts, because it starts over.
+- The 30 past days are labelled "Week 1 · Mon" to "Week 6 · Fri" (no real calendar dates). Each company has a random seed, so its history can be rebuilt exactly. Changing the company makes a new history.
 
 ## Roadmap
 - V1: Levels 1-4, forecast panel, day and week reports, banner and watermark.

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Market School</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Apply the saved theme before the page draws, so it doesn't flash. -->
+  <script>
+    try {
+      var t = localStorage.getItem("marketSchool.theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="banner" role="note">
+    <strong>Everything here is made up.</strong>
+    These companies, prices and news are not real. For learning and practice only, not financial advice.
+  </div>
+
+  <header class="topbar">
+    <h1 class="logo">📚 Market School</h1>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch light or dark mode">🌙</button>
+  </header>
+
+  <main class="container">
+    <!-- Screen 1: create your company -->
+    <section id="create-screen" hidden>
+      <div class="card intro">
+        <h2>Level 1: Meet your company</h2>
+        <p>First, invent your own imaginary company. It will be the star of every level.
+          Its personality decides how its made-up price tends to move.</p>
+      </div>
+
+      <form id="company-form" class="card" novalidate>
+        <div class="field">
+          <label for="name">Company name</label>
+          <input id="name" name="name" type="text" maxlength="30" autocomplete="off"
+                 placeholder="e.g. Noor's Bakery" required>
+          <p class="error" id="name-error" aria-live="polite"></p>
+        </div>
+
+        <fieldset class="field">
+          <legend>Emoji logo</legend>
+          <div class="emoji-grid" id="emoji-grid"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="industry">Industry</label>
+          <select id="industry" name="industry">
+            <option>Food</option>
+            <option>Tech</option>
+            <option>Cars</option>
+            <option>Energy</option>
+            <option>Fashion</option>
+            <option>Healthcare</option>
+            <option value="custom">✏️ Something else (type your own)</option>
+          </select>
+          <div id="custom-industry-box" hidden>
+            <label class="sub-label" for="custom-industry">Your industry</label>
+            <input id="custom-industry" name="customIndustry" type="text" maxlength="25"
+                   autocomplete="off" placeholder="e.g. Toys, Travel, Books">
+            <p class="error" id="industry-error" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="price">Starting price ($)</label>
+          <input id="price" name="price" type="number" inputmode="decimal"
+                 min="1" max="1000" step="0.01" value="50" required>
+          <p class="hint">Any price from $1 to $1,000.</p>
+          <p class="error" id="price-error" aria-live="polite"></p>
+        </div>
+
+        <fieldset class="field">
+          <legend>Personality</legend>
+          <div class="personality-list" id="personality-list"></div>
+        </fieldset>
+
+        <p class="hint" id="edit-hint" hidden>Saving changes gives your company a brand-new made-up price history and clears your forecasts.</p>
+        <button class="primary-btn" type="submit" id="submit-btn">Create my company</button>
+      </form>
+    </section>
+
+    <!-- Screen 2: your company (placeholder until charts are built) -->
+    <section id="company-screen" hidden>
+      <div class="card company-card">
+        <div class="company-logo" id="c-logo"></div>
+        <div>
+          <h2 id="c-name"></h2>
+          <p class="muted" id="c-meta"></p>
+        </div>
+      </div>
+      <!-- End-of-day (and end-of-week) report for the latest revealed day -->
+      <div id="report"></div>
+
+      <div class="card">
+        <h3 class="card-title">Last 30 trading days, and next week</h3>
+        <div class="stats">
+          <div>
+            <div class="stat-label">30 days ago</div>
+            <div class="stat-value" id="s-start"></div>
+          </div>
+          <div>
+            <div class="stat-label">Latest close</div>
+            <div class="stat-value" id="s-last"></div>
+          </div>
+          <div>
+            <div class="stat-label">30-day change</div>
+            <div class="stat-value" id="s-change"></div>
+          </div>
+        </div>
+
+        <div class="chart-wrap" id="chart"></div>
+
+        <ul class="chart-key">
+          <li><span class="key-ring" aria-hidden="true"></span> a day with made-up news</li>
+          <li><span class="key-fan key-fan-inner" aria-hidden="true"></span> where 5 in 10 imagined futures landed</li>
+          <li><span class="key-fan key-fan-outer" aria-hidden="true"></span> where 8 in 10 imagined futures landed</li>
+          <li><span class="key-dash" aria-hidden="true"></span> the middle imagined future</li>
+        </ul>
+        <p class="note">📅 Markets don't trade on Saturdays and Sundays, so the chart only shows
+          Monday to Friday. 30 trading days is 6 weeks.</p>
+
+        <details class="table-view">
+          <summary>See the last 30 days as a table</summary>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Day</th><th>Open</th><th>Close</th><th>Change</th><th>News</th></tr>
+              </thead>
+              <tbody id="days-table"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+
+      <section class="card guess" aria-labelledby="g-title">
+        <h3 class="card-title" id="g-title">Your turn: what happens on <span id="g-day"></span>?</h3>
+
+        <label for="g-up">Your chance it goes up</label>
+        <div class="slider-row">
+          <input id="g-up" type="range" min="1" max="99" step="1" value="50">
+          <input id="g-up-num" type="number" min="1" max="99" step="1" value="50" inputmode="numeric"
+                 aria-label="Your chance it goes up, in percent">
+          <span aria-hidden="true">%</span>
+        </div>
+        <div class="split-labels">
+          <span class="gain">▲ Up <span id="g-up-val">50%</span></span>
+          <span class="loss">Down <span id="g-down-val">50%</span> ▼</span>
+        </div>
+        <p class="hint">50% means "no idea, like a coin flip". 0% and 100% aren't allowed: nothing here is certain.</p>
+
+        <details class="optional" id="g-range-box">
+          <summary>Add a price range (optional)</summary>
+          <p class="hint">Where do you think it will close? Aim for a range that's right about 8 times in 10.</p>
+          <div class="range-row">
+            <div>
+              <label class="sub-label" for="g-low">From $</label>
+              <input id="g-low" type="number" min="0.01" step="0.01" inputmode="decimal">
+            </div>
+            <div>
+              <label class="sub-label" for="g-high">To $</label>
+              <input id="g-high" type="number" min="0.01" step="0.01" inputmode="decimal">
+            </div>
+          </div>
+          <p class="error" id="g-range-error" aria-live="polite"></p>
+        </details>
+
+        <label class="sub-label" for="g-reason">Why do you think so? (optional)</label>
+        <textarea id="g-reason" rows="2" maxlength="200" placeholder="e.g. It went up 4 days in a row"></textarea>
+
+        <button class="primary-btn" id="next-day-btn" type="button">Next day ▶</button>
+        <p class="hint center">Your guess is locked in when you press the button.</p>
+      </section>
+
+      <section class="card forecast" aria-labelledby="fc-title">
+        <h3 class="card-title" id="fc-title">What might happen next?</h3>
+        <p class="muted">Chances, not promises. Worked out from 1,000 imagined futures.</p>
+
+        <div class="fc-block">
+          <h4>Next day <span class="muted" id="fc-day-label"></span></h4>
+          <div class="split" id="fc-day-split"></div>
+          <p id="fc-day-count"></p>
+          <p><strong>Likely range:</strong> <span id="fc-day-range"></span></p>
+        </div>
+
+        <div class="fc-block">
+          <h4>Next week <span class="muted" id="fc-week-label"></span></h4>
+          <div class="split" id="fc-week-split"></div>
+          <p id="fc-week-count"></p>
+          <p><strong>Likely range:</strong> <span id="fc-week-range"></span></p>
+          <p class="muted">The range is wider than for one day: more days means more room for surprises.
+            That's why the fan on the chart opens up.</p>
+        </div>
+
+        <div class="explain">
+          <h4>🎲 How does this work?</h4>
+          <ol>
+            <li>Nobody can know the future, so the computer <strong>imagines</strong> it, 1,000 times.</li>
+            <li>Each imagined future is built from the last 30 days of <span class="fc-name"></span>:
+              for every new day, it picks one past day at random and repeats its move
+              (like "up 1.2%" or "down 0.8%").</li>
+            <li>Then we count. If 580 of the 1,000 futures went up, we say "58% chance up".</li>
+            <li>The <strong>likely range</strong> is where the middle 8 in 10 futures ended.
+              So the real price should land outside it about 2 times in 10. That's normal, not a mistake.</li>
+          </ol>
+          <p class="muted">⚠️ The futures copy the past. If the last 30 days were unusual,
+            the forecast will be too.</p>
+        </div>
+      </section>
+
+      <div class="card">
+        <p><strong>Personality:</strong> <span id="c-personality"></span></p>
+        <p class="muted">Coming next: questions about your chart.</p>
+      </div>
+      <button class="secondary-btn" id="edit-btn" type="button">Change my company</button>
+    </section>
+  </main>
+
+  <script src="brands.js"></script>
+  <script src="market.js"></script>
+  <script src="forecast.js"></script>
+  <script src="chart.js"></script>
+  <script src="report.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
