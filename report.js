@@ -49,29 +49,50 @@ function inRange(price, low, high) {
   return price >= low && price <= high;
 }
 
+// Did a chance lean the right way? null if it was exactly 50/50.
+function leanedRight(chance, up) {
+  return chance === 0.5 ? null : (chance > 0.5) === up;
+}
+
 // Totals over the forecast days given (all days if `indices` is left out).
+// The app predicts every day; your guess is optional (yourUp is null when skipped).
 function forecastStats(company, indices) {
-  const all = Object.keys(company.forecasts || {}).map(Number);
+  const all = Object.keys(company.forecasts || {}).map(Number).sort((a, b) => a - b);
   const list = (indices || all).filter(i => company.forecasts[i] && company.days[i]);
-  const s = { n: list.length, you: 0, app: 0, sideRight: 0, leaned: 0,
-              yourRanges: 0, yourHits: 0, appHits: 0 };
+  const s = { n: list.length, days: list,
+              app: 0, appLeaned: 0, appRight: 0, appSure: 0, appHits: 0,
+              yourN: 0, you: 0, yourLeaned: 0, yourRight: 0, yourRanges: 0, yourHits: 0 };
   list.forEach(i => {
     const f = company.forecasts[i];
     const up = wentUp(company, i);
     const close = company.days[i].close;
-    s.you += missScore(f.yourUp, up);
-    s.app += missScore(f.appUp / f.appTotal, up);
-    if (f.yourUp !== 0.5) {
-      s.leaned++;
-      if ((f.yourUp > 0.5) === up) s.sideRight++;
-    }
-    if (f.yourLow != null) {
-      s.yourRanges++;
-      if (inRange(close, f.yourLow, f.yourHigh)) s.yourHits++;
+    const appChance = f.appUp / f.appTotal;
+    s.app += missScore(appChance, up);
+    const appLean = leanedRight(appChance, up);
+    if (appLean !== null) {
+      s.appLeaned++;
+      s.appSure += Math.max(appChance, 1 - appChance);
+      if (appLean) s.appRight++;
     }
     if (inRange(close, f.appLow, f.appHigh)) s.appHits++;
+
+    if (f.yourUp != null) {
+      s.yourN++;
+      s.you += missScore(f.yourUp, up);
+      const yourLean = leanedRight(f.yourUp, up);
+      if (yourLean !== null) {
+        s.yourLeaned++;
+        if (yourLean) s.yourRight++;
+      }
+      if (f.yourLow != null) {
+        s.yourRanges++;
+        if (inRange(close, f.yourLow, f.yourHigh)) s.yourHits++;
+      }
+    }
   });
-  if (s.n) { s.you /= s.n; s.app /= s.n; }
+  if (s.n) s.app /= s.n;
+  if (s.yourN) s.you /= s.yourN;
+  if (s.appLeaned) s.appSure /= s.appLeaned; // how sure the app was, on average
   return s;
 }
 
@@ -144,12 +165,12 @@ function miniSparkline(days, i) {
 
 // ---------- Learning tip ----------
 const GENERAL_TIPS = [
-  "One day tells you very little. Judge forecasts over many days, not one.",
+  "One day tells you very little. Judge a prediction over many days, not one.",
   "A coin flip scores 25 every single day. Beating it over many days is harder than it sounds.",
-  "Saying 90% and being wrong costs 81 points. Only be very sure when you have a really good reason.",
+  "Saying 90% and being wrong costs 81 points. A prediction should only be very sure when there's a really good reason.",
   "A good \"8 in 10\" range should miss about 2 times in 10. Missing sometimes is part of being honest.",
-  "Past moves can help you guess how BIG the next move might be, but often not which WAY it will go.",
-  "If you find yourself changing your guess after every single day, you may be reacting to luck."
+  "Past moves can help predict how BIG the next move might be, but often not which WAY it will go.",
+  "The app's prediction copies the last 30 days. If those days were unusual, the prediction will be too."
 ];
 
 function pickTip(company, i, f) {
@@ -157,11 +178,11 @@ function pickTip(company, i, f) {
   const mood = moodOf(company, i);
   const p = PERSONALITIES.find(x => x.id === company.personality);
   const up = wentUp(company, i);
-  if (f && f.yourUp !== 0.5 && (f.yourUp > 0.5) !== up && Math.abs(f.yourUp - 0.5) >= 0.3) {
+  if (f && f.yourUp != null && leanedRight(f.yourUp, up) === false && Math.abs(f.yourUp - 0.5) >= 0.3) {
     return "You were very sure and it went the other way. Very sure forecasts should be right most of the time, so watch whether yours are.";
   }
   if (d.news) {
-    return "News can move a price a lot in one day, and nobody knows it's coming. That's why likely ranges need room for surprises.";
+    return "News can move a price a lot in one day, and nobody knows it's coming. That's why good forecasts leave room for surprises.";
   }
   if (mood === MOODS.bigGain || mood === MOODS.bigLoss) {
     return "For a " + p.label + " company, a " + pctText(dayChange(company.days, i)) +
@@ -177,7 +198,9 @@ function pickTip(company, i, f) {
 }
 
 // ---------- End-of-day report ----------
-function renderDayReport(box, company, i) {
+// opts.noHead leaves out the mood header (the result screen shows its own).
+function renderDayReport(box, company, i, opts) {
+  opts = opts || {};
   const days = company.days;
   const d = days[i];
   const prev = days[i - 1];
@@ -197,7 +220,7 @@ function renderDayReport(box, company, i) {
   titles.append(el("div", "report-kicker", "End of day · " + dayLabel(i)));
   titles.append(el("h3", "report-title", mood.label + " for " + company.name));
   head.append(titles);
-  card.append(head);
+  if (!opts.noHead) card.append(head);
   card.append(el("p", "muted small",
     "For a " + p.label + " company, " + pctText(BIG_MOVE * vol) + " or more counts as a big move, and under " +
     pctText(STABLE_MOVE * vol) + " counts as stable."));
@@ -236,10 +259,10 @@ function renderDayReport(box, company, i) {
   minis.append(fig1, fig2);
   card.append(minis);
 
-  // Forecast check.
+  // Prediction check: the app first, then the coin flip, then your guess if you made one.
   if (f) {
     const check = el("div", "fc-check");
-    check.append(el("h4", null, "Forecast check"));
+    check.append(el("h4", null, "Prediction check"));
     const flat = d.close === prev.close;
     check.append(flat
       ? el("p", "fc-result", "■ It closed exactly the same, which counts as \"not up\".")
@@ -252,10 +275,10 @@ function renderDayReport(box, company, i) {
     thead.append(hr);
     const tbody = el("tbody");
     const rows = [
-      ["You", f.yourUp, missScore(f.yourUp, up)],
       ["App", f.appUp / f.appTotal, missScore(f.appUp / f.appTotal, up)],
       ["Coin flip", 0.5, COIN_SCORE]
     ];
+    if (f.yourUp != null) rows.push(["You", f.yourUp, missScore(f.yourUp, up)]);
     const best = Math.min(...rows.map(r => r[2]));
     rows.forEach(([who, chance, score]) => {
       const tr = el("tr", score === best ? "best" : null);
@@ -271,45 +294,102 @@ function renderDayReport(box, company, i) {
 
     // Ranges.
     const ranges = el("ul", "range-list");
+    const appHit = inRange(d.close, f.appLow, f.appHigh);
+    ranges.append(el("li", null, (appHit ? "✅ " : "❌ ") + "App's 8-in-10 range " + money(f.appLow) + " to " +
+      money(f.appHigh) + (appHit ? " caught the close." : " missed the close (expected about 2 times in 10).")));
     if (f.yourLow != null) {
       const hit = inRange(d.close, f.yourLow, f.yourHigh);
       ranges.append(el("li", null, (hit ? "✅ " : "❌ ") + "Your range " + money(f.yourLow) + " to " +
         money(f.yourHigh) + (hit ? " caught the close." : " missed the close.")));
     }
-    const appHit = inRange(d.close, f.appLow, f.appHigh);
-    ranges.append(el("li", null, (appHit ? "✅ " : "❌ ") + "App's 8-in-10 range " + money(f.appLow) + " to " +
-      money(f.appHigh) + (appHit ? " caught the close." : " missed the close (expected about 2 times in 10).")));
     check.append(ranges);
 
-    // What it means.
-    const yourPct = Math.round(f.yourUp * 100);
-    let meaning;
-    if (f.yourUp === 0.5) {
-      meaning = "You said 50%, the same as a coin flip. That's honest when you have no idea, but it can never beat the coin.";
-    } else if ((f.yourUp > 0.5) === up) {
-      meaning = "You leaned the right way today. Nice, but one day could be luck. Keep going and see if it holds up.";
-    } else {
-      const side = f.yourUp > 0.5 ? yourPct + "% up" : (100 - yourPct) + "% down";
-      meaning = "You said " + side + ", and it went the other way. That isn't automatically a mistake: a " +
-        Math.max(yourPct, 100 - yourPct) + "% forecast is expected to miss about " + Math.min(yourPct, 100 - yourPct) +
-        " times in 100. What matters is how your forecasts do over many days.";
-    }
-    check.append(el("p", null, meaning));
+    check.append(el("p", null, "One day says very little about a prediction, right or wrong. " +
+      "The track record shows how the app does over many days."));
     if (f.reason) check.append(el("p", "reason", "Your reason: “" + f.reason + "”"));
     card.append(check);
   }
 
-  // Tip and running record.
   card.append(el("p", "tip", "💡 " + pickTip(company, i, f)));
+  box.append(card);
+}
+
+// ---------- Prediction track record ----------
+// How often the app's next-day predictions came true so far, next to a coin flip
+// (and your own guesses, if you made any).
+const TRACK_ROW_DAYS = 10;
+
+function renderTrackRecord(box, company) {
   const s = forecastStats(company);
-  if (s.n) {
-    let rec = "Your record: " + s.n + " forecast" + (s.n === 1 ? "" : "s") + ". Average miss score: you " +
-      s.you.toFixed(1) + " · app " + s.app.toFixed(1) + " · coin flip 25.";
-    if (s.yourRanges) rec += " Your ranges caught " + s.yourHits + " of " + s.yourRanges + ".";
-    rec += " App's ranges caught " + s.appHits + " of " + s.n + ".";
-    card.append(el("p", "record", rec));
+  const card = el("section", "card track");
+  card.setAttribute("aria-label", "Prediction track record");
+  card.append(el("h3", "card-title", "📊 Prediction track record"));
+
+  if (!s.n) {
+    card.append(el("p", "muted", "Nothing checked yet. Press Next day and each prediction gets checked " +
+      "against what really happened, then added up here."));
+    box.append(card);
+    return;
   }
 
+  // The latest days, oldest first: did the app lean the right way?
+  const recent = s.days.slice(-TRACK_ROW_DAYS);
+  const row = el("ol", "track-row");
+  recent.forEach(i => {
+    const f = company.forecasts[i];
+    const right = leanedRight(f.appUp / f.appTotal, wentUp(company, i));
+    const mark = right === null ? "➖" : right ? "✅" : "❌";
+    const li = el("li", null, mark);
+    li.title = dayLabel(i) + ": " + (right === null ? "50/50" : right ? "right way" : "wrong way");
+    row.append(li);
+  });
+  row.setAttribute("aria-label", "Last " + recent.length + " days: the app leaned the right way on " +
+    recent.filter(i => leanedRight(company.forecasts[i].appUp / company.forecasts[i].appTotal, wentUp(company, i))).length +
+    " of them.");
+  card.append(el("p", "muted small", "Last " + recent.length + " day" + (recent.length === 1 ? "" : "s") +
+    ", oldest first. ✅ = the app leaned the right way, ❌ = it didn't."));
+  card.append(row);
+
+  // App vs coin flip (vs you).
+  const table = el("table", "score-table");
+  const thead = el("thead");
+  const hr = el("tr");
+  ["", "Right way", "Avg miss score"].forEach(t => hr.append(el("th", null, t)));
+  thead.append(hr);
+  const tbody = el("tbody");
+  const rows = [
+    ["App", s.appRight + " of " + s.appLeaned, s.app],
+    ["Coin flip", "about half", COIN_SCORE]
+  ];
+  if (s.yourN) rows.push(["You", s.yourLeaned ? s.yourRight + " of " + s.yourLeaned : "-", s.you]);
+  const best = Math.min(...rows.map(r => r[2]));
+  rows.forEach(([who, right, score]) => {
+    const tr = el("tr", score === best ? "best" : null);
+    tr.append(el("td", null, who));
+    tr.append(el("td", null, right));
+    tr.append(el("td", null, score.toFixed(1) + (score === best ? " ✓" : "")));
+    tbody.append(tr);
+  });
+  table.append(thead, tbody);
+  card.append(table);
+  card.append(el("p", "muted small", "Lower miss score is better. A coin flip always scores 25."));
+
+  const list = el("ul", "range-list");
+  list.append(el("li", null, "🎯 The likely range caught the real price on " + s.appHits + " of " + s.n +
+    " days. An honest 8-in-10 range should catch about " + Math.round(s.n * 0.8) + "."));
+  if (s.appLeaned) {
+    list.append(el("li", null, "⚖️ On average the app was " + Math.round(s.appSure * 100) +
+      "% sure, and it was right " + Math.round((s.appRight / s.appLeaned) * 100) +
+      "% of the time. For an honest prediction, these two numbers end up close after many days."));
+  }
+  card.append(list);
+
+  let verdict = s.app < COIN_SCORE
+    ? "So far the app is beating the coin flip."
+    : "So far the coin flip is doing as well or better.";
+  if (s.n < 20) verdict += " But after only " + s.n + " day" + (s.n === 1 ? "" : "s") +
+    ", luck plays a big part. The record means more after 20 days or so.";
+  card.append(el("p", null, verdict));
   box.append(card);
 }
 
@@ -358,16 +438,18 @@ function renderWeekReport(box, company, fri) {
   const s = forecastStats(company, indices);
   if (s.n) {
     const check = el("div", "fc-check");
-    check.append(el("h4", null, "How the forecasts did this week"));
+    check.append(el("h4", null, "How the predictions did this week"));
     const list = el("ul", "range-list");
-    if (s.leaned) list.append(el("li", null, "You leaned the right way on " + s.sideRight + " of " + s.leaned + " days."));
-    list.append(el("li", null, "Average miss score: you " + s.you.toFixed(1) + " · app " + s.app.toFixed(1) + " · coin flip 25."));
-    if (s.yourRanges) list.append(el("li", null, "Your ranges caught " + s.yourHits + " of " + s.yourRanges + "."));
+    if (s.appLeaned) list.append(el("li", null, "The app leaned the right way on " + s.appRight + " of " + s.appLeaned + " days."));
     list.append(el("li", null, "App's ranges caught " + s.appHits + " of " + s.n + "."));
+    list.append(el("li", null, "Average miss score: app " + s.app.toFixed(1) + " · coin flip 25" +
+      (s.yourN ? " · you " + s.you.toFixed(1) : "") + "."));
+    if (s.yourLeaned) list.append(el("li", null, "You leaned the right way on " + s.yourRight + " of " + s.yourLeaned + " days."));
+    if (s.yourRanges) list.append(el("li", null, "Your ranges caught " + s.yourHits + " of " + s.yourRanges + "."));
     check.append(list);
-    check.append(el("p", null, s.you < COIN_SCORE
-      ? "You beat the coin flip this week. Over only " + s.n + " days luck plays a big part, so keep watching."
-      : "The coin flip did as well or better this week. Over only " + s.n + " days that's very common, even for good forecasters."));
+    check.append(el("p", null, s.app < COIN_SCORE
+      ? "The app beat the coin flip this week. Over only " + s.n + " days luck plays a big part, so keep watching."
+      : "The coin flip did as well or better this week. Over only " + s.n + " days that's very common, even for good predictions."));
     card.append(check);
   }
   box.append(card);

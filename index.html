@@ -26,12 +26,30 @@
   </header>
 
   <main class="container">
-    <!-- Screen 1: create your company -->
+    <!-- Welcome -->
+    <section id="welcome-screen" class="hero" hidden>
+      <div class="hero-emoji" aria-hidden="true">📈🎲</div>
+      <h2 class="hero-title">How likely is a price to go up tomorrow?</h2>
+      <p class="hero-text">Watch the app predict a pretend company's price in chances, then see what really happens.</p>
+      <button class="primary-btn big-btn" id="start-btn" type="button">Start</button>
+      <p class="hint center">Free. No sign-up.</p>
+    </section>
+
+    <!-- Pick a company -->
+    <section id="pick-screen" hidden>
+      <h2 class="screen-title">Pick a pretend company</h2>
+      <p class="muted">Each one moves in its own way.</p>
+      <div class="pick-grid" id="pick-grid"></div>
+      <button class="link-btn" id="create-own-btn" type="button">✏️ Or create your own company</button>
+      <button class="link-btn" id="pick-back-btn" type="button" hidden>← Back to my company</button>
+    </section>
+
+    <!-- Create your own (optional) -->
     <section id="create-screen" hidden>
+      <button class="link-btn back-link" id="create-back-btn" type="button">← Back</button>
       <div class="card intro">
-        <h2>Level 1: Meet your company</h2>
-        <p>First, invent your own imaginary company. It will be the star of every level.
-          Its personality decides how its made-up price tends to move.</p>
+        <h2>Create your company</h2>
+        <p>Invent your own imaginary company. Its personality decides how its made-up price tends to move.</p>
       </div>
 
       <form id="company-form" class="card" novalidate>
@@ -79,22 +97,20 @@
           <div class="personality-list" id="personality-list"></div>
         </fieldset>
 
-        <p class="hint" id="edit-hint" hidden>Saving changes gives your company a brand-new made-up price history and clears your forecasts.</p>
+        <p class="hint" id="edit-hint" hidden>Saving changes gives your company a brand-new made-up price history and clears its track record.</p>
         <button class="primary-btn" type="submit" id="submit-btn">Create my company</button>
       </form>
     </section>
 
-    <!-- Screen 2: your company (placeholder until charts are built) -->
+    <!-- Main screen: past days, then the app's prediction -->
     <section id="company-screen" hidden>
-      <div class="card company-card">
+      <div class="company-card">
         <div class="company-logo" id="c-logo"></div>
         <div>
           <h2 id="c-name"></h2>
           <p class="muted" id="c-meta"></p>
         </div>
       </div>
-      <!-- End-of-day (and end-of-week) report for the latest revealed day -->
-      <div id="report"></div>
 
       <div class="card">
         <h3 class="card-title">Last 30 trading days, and next week</h3>
@@ -117,15 +133,100 @@
 
         <ul class="chart-key">
           <li><span class="key-ring" aria-hidden="true"></span> a day with made-up news</li>
-          <li><span class="key-fan key-fan-inner" aria-hidden="true"></span> where 5 in 10 imagined futures landed</li>
-          <li><span class="key-fan key-fan-outer" aria-hidden="true"></span> where 8 in 10 imagined futures landed</li>
-          <li><span class="key-dash" aria-hidden="true"></span> the middle imagined future</li>
+          <li><span class="key-fan key-fan-inner" aria-hidden="true"></span> 5 in 10 imagined futures</li>
+          <li><span class="key-fan key-fan-outer" aria-hidden="true"></span> 8 in 10 imagined futures</li>
+          <li><span class="key-dash" aria-hidden="true"></span> the middle future</li>
         </ul>
+      </div>
+
+      <section class="card forecast" aria-labelledby="fc-title">
+        <h3 class="card-title" id="fc-title">🔮 The app's prediction</h3>
+        <p class="muted">Chances, not promises. Worked out from 1,000 imagined futures.</p>
+
+        <div class="fc-block">
+          <h4>Next day <span class="muted" id="fc-day-label"></span></h4>
+          <div class="split" id="fc-day-split"></div>
+          <p class="fc-sentence" id="fc-day-count"></p>
+          <p><strong>Likely range:</strong> <span id="fc-day-range"></span></p>
+        </div>
+
+        <div class="fc-block">
+          <h4>Next week <span class="muted" id="fc-week-label"></span></h4>
+          <div class="split" id="fc-week-split"></div>
+          <p class="fc-sentence" id="fc-week-count"></p>
+          <p><strong>Likely range:</strong> <span id="fc-week-range"></span></p>
+          <p class="muted small">Wider than for one day: more days means more room for surprises.
+            That's why the fan on the chart opens up.</p>
+        </div>
+
+        <details class="optional explain-box">
+          <summary>🎲 How does the app work this out?</summary>
+          <div class="explain">
+            <ol>
+              <li>Nobody can know the future, so the computer <strong>imagines</strong> it, 1,000 times.</li>
+              <li>Each imagined future is built from the last 30 days of <span class="fc-name"></span>:
+                for every new day, it picks one past day at random and repeats its move
+                (like "up 1.2%" or "down 0.8%").</li>
+              <li>Then we count. If 580 of the 1,000 futures went up, we say "58% chance up".</li>
+              <li>The <strong>likely range</strong> is where the middle 8 in 10 futures ended.
+                So the real price should land outside it about 2 times in 10. That's normal, not a mistake.</li>
+            </ol>
+            <p class="muted">⚠️ The futures copy the past. If the last 30 days were unusual,
+              the prediction will be too.</p>
+          </div>
+        </details>
+      </section>
+
+      <details class="own-guess" id="guess-box">
+        <summary>🤔 Think you can do better? Add your own guess</summary>
+        <section class="card guess" aria-label="Your own guess">
+          <label for="g-up">Your chance it goes up on <span id="g-day"></span></label>
+          <div class="slider-row">
+            <input id="g-up" type="range" min="1" max="99" step="1" value="50">
+            <input id="g-up-num" type="number" min="1" max="99" step="1" value="50" inputmode="numeric"
+                   aria-label="Your chance it goes up, in percent">
+            <span aria-hidden="true">%</span>
+          </div>
+          <div class="split-labels">
+            <span class="gain">▲ Up <span id="g-up-val">50%</span></span>
+            <span class="loss">Down <span id="g-down-val">50%</span> ▼</span>
+          </div>
+          <p class="hint">50% means "no idea, like a coin flip". 0% and 100% aren't allowed: nothing here is certain.</p>
+
+          <details class="optional" id="g-range-box">
+            <summary>Add a price range (optional)</summary>
+            <p class="hint">Where do you think it will close? Aim for a range that's right about 8 times in 10.</p>
+            <div class="range-row">
+              <div>
+                <label class="sub-label" for="g-low">From $</label>
+                <input id="g-low" type="number" min="0.01" step="0.01" inputmode="decimal">
+              </div>
+              <div>
+                <label class="sub-label" for="g-high">To $</label>
+                <input id="g-high" type="number" min="0.01" step="0.01" inputmode="decimal">
+              </div>
+            </div>
+            <p class="error" id="g-range-error" aria-live="polite"></p>
+          </details>
+
+          <label class="sub-label" for="g-reason">Why do you think so? (optional)</label>
+          <textarea id="g-reason" rows="2" maxlength="200" placeholder="e.g. It went up 4 days in a row"></textarea>
+          <p class="hint">Your guess is locked in together with the app's when you press Next day.</p>
+        </section>
+      </details>
+
+      <button class="primary-btn big-btn" id="next-day-btn" type="button">Next day ▶</button>
+      <p class="hint center">See what really happens, and how the prediction did.</p>
+
+      <div id="track-record"></div>
+
+      <details class="card more">
+        <summary>More about <span class="fc-name"></span></summary>
+        <p><strong>Personality:</strong> <span id="c-personality"></span></p>
         <p class="note">📅 Markets don't trade on Saturdays and Sundays, so the chart only shows
           Monday to Friday. 30 trading days is 6 weeks.</p>
-
-        <details class="table-view">
-          <summary>See the last 30 days as a table</summary>
+        <div class="table-view">
+          <h4>The last 30 days</h4>
           <div class="table-scroll">
             <table>
               <thead>
@@ -134,89 +235,26 @@
               <tbody id="days-table"></tbody>
             </table>
           </div>
-        </details>
+        </div>
+        <button class="secondary-btn" id="edit-btn" type="button">Change company</button>
+      </details>
+    </section>
+
+    <!-- Result of the day -->
+    <section id="result-screen" hidden>
+      <div class="card result-card">
+        <div class="result-emoji" id="r-emoji" aria-hidden="true"></div>
+        <div class="report-kicker" id="r-kicker"></div>
+        <h2 class="result-title" id="r-title"></h2>
+        <p class="result-text" id="r-text"></p>
+        <ul class="result-check" id="r-check" aria-label="How the prediction did"></ul>
+        <button class="link-btn" id="r-details-btn" type="button" aria-expanded="false"
+                aria-controls="r-details">Show details ▾</button>
       </div>
-
-      <section class="card guess" aria-labelledby="g-title">
-        <h3 class="card-title" id="g-title">Your turn: what happens on <span id="g-day"></span>?</h3>
-
-        <label for="g-up">Your chance it goes up</label>
-        <div class="slider-row">
-          <input id="g-up" type="range" min="1" max="99" step="1" value="50">
-          <input id="g-up-num" type="number" min="1" max="99" step="1" value="50" inputmode="numeric"
-                 aria-label="Your chance it goes up, in percent">
-          <span aria-hidden="true">%</span>
-        </div>
-        <div class="split-labels">
-          <span class="gain">▲ Up <span id="g-up-val">50%</span></span>
-          <span class="loss">Down <span id="g-down-val">50%</span> ▼</span>
-        </div>
-        <p class="hint">50% means "no idea, like a coin flip". 0% and 100% aren't allowed: nothing here is certain.</p>
-
-        <details class="optional" id="g-range-box">
-          <summary>Add a price range (optional)</summary>
-          <p class="hint">Where do you think it will close? Aim for a range that's right about 8 times in 10.</p>
-          <div class="range-row">
-            <div>
-              <label class="sub-label" for="g-low">From $</label>
-              <input id="g-low" type="number" min="0.01" step="0.01" inputmode="decimal">
-            </div>
-            <div>
-              <label class="sub-label" for="g-high">To $</label>
-              <input id="g-high" type="number" min="0.01" step="0.01" inputmode="decimal">
-            </div>
-          </div>
-          <p class="error" id="g-range-error" aria-live="polite"></p>
-        </details>
-
-        <label class="sub-label" for="g-reason">Why do you think so? (optional)</label>
-        <textarea id="g-reason" rows="2" maxlength="200" placeholder="e.g. It went up 4 days in a row"></textarea>
-
-        <button class="primary-btn" id="next-day-btn" type="button">Next day ▶</button>
-        <p class="hint center">Your guess is locked in when you press the button.</p>
-      </section>
-
-      <section class="card forecast" aria-labelledby="fc-title">
-        <h3 class="card-title" id="fc-title">What might happen next?</h3>
-        <p class="muted">Chances, not promises. Worked out from 1,000 imagined futures.</p>
-
-        <div class="fc-block">
-          <h4>Next day <span class="muted" id="fc-day-label"></span></h4>
-          <div class="split" id="fc-day-split"></div>
-          <p id="fc-day-count"></p>
-          <p><strong>Likely range:</strong> <span id="fc-day-range"></span></p>
-        </div>
-
-        <div class="fc-block">
-          <h4>Next week <span class="muted" id="fc-week-label"></span></h4>
-          <div class="split" id="fc-week-split"></div>
-          <p id="fc-week-count"></p>
-          <p><strong>Likely range:</strong> <span id="fc-week-range"></span></p>
-          <p class="muted">The range is wider than for one day: more days means more room for surprises.
-            That's why the fan on the chart opens up.</p>
-        </div>
-
-        <div class="explain">
-          <h4>🎲 How does this work?</h4>
-          <ol>
-            <li>Nobody can know the future, so the computer <strong>imagines</strong> it, 1,000 times.</li>
-            <li>Each imagined future is built from the last 30 days of <span class="fc-name"></span>:
-              for every new day, it picks one past day at random and repeats its move
-              (like "up 1.2%" or "down 0.8%").</li>
-            <li>Then we count. If 580 of the 1,000 futures went up, we say "58% chance up".</li>
-            <li>The <strong>likely range</strong> is where the middle 8 in 10 futures ended.
-              So the real price should land outside it about 2 times in 10. That's normal, not a mistake.</li>
-          </ol>
-          <p class="muted">⚠️ The futures copy the past. If the last 30 days were unusual,
-            the forecast will be too.</p>
-        </div>
-      </section>
-
-      <div class="card">
-        <p><strong>Personality:</strong> <span id="c-personality"></span></p>
-        <p class="muted">Coming next: questions about your chart.</p>
-      </div>
-      <button class="secondary-btn" id="edit-btn" type="button">Change my company</button>
+      <div id="r-details" hidden></div>
+      <div id="r-week"></div>
+      <div id="r-record"></div>
+      <button class="primary-btn" id="r-next-btn" type="button">See the next prediction ▶</button>
     </section>
   </main>
 
